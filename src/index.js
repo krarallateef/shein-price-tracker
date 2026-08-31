@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { DASHBOARD_HTML } from './dashboard.js';
-import { checkPassword, issueCookie, clearCookie, isAuthed } from './auth.js';
+import { checkCredentials, issueCookie, clearCookie, isAuthed } from './auth.js';
 import { applyResults, watchdog } from './checker.js';
 import { extractGoodsId } from './parse.js';
 import { sendTelegram } from './notify.js';
@@ -11,8 +11,8 @@ app.get('/', (c) => c.html(DASHBOARD_HTML));
 
 // ══ مصادقة اللوحة (كوكي) ══
 app.post('/api/login', async (c) => {
-  const { password } = await c.req.json().catch(() => ({}));
-  if (!(await checkPassword(c.env, password))) return c.json({ ok: false }, 401);
+  const { email, password } = await c.req.json().catch(() => ({}));
+  if (!(await checkCredentials(c.env, email, password))) return c.json({ ok: false }, 401);
   c.header('Set-Cookie', await issueCookie(c.env));
   return c.json({ ok: true });
 });

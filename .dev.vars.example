@@ -1,7 +1,8 @@
 # انسخه إلى .dev.vars للتطوير المحلي (لا يُرفع — في .gitignore).
 # على السحابة تُضبط بـ: wrangler secret put <NAME>
 
-# كلمة مرور لوحة التحكم (الدخول الوحيد).
+# بيانات دخول لوحة التحكم.
+ADMIN_EMAIL=you@example.com
 ADMIN_PASSWORD=change-me-please
 
 # سرّ توقيع كوكي الجلسة — أي نص عشوائي طويل.

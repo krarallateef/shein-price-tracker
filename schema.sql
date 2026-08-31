@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS products (
   url                  TEXT NOT NULL,
   goods_id             TEXT,                 -- معرّف المنتج في شي إن (يُستخرج تلقائياً)
   label                TEXT,                 -- تسمية من اختيارك
+  image_url            TEXT,                 -- الصورة الرئيسية (تُملأ عند أول فحص)
+  sku                  TEXT,                 -- رمز المنتج (goods_sn)
   region               TEXT DEFAULT 'www',   -- www | ar | m ... (نطاق شي إن الفرعي)
   currency             TEXT,                 -- تُملأ من JSON-LD عند أول فحص
   target_price         REAL,                 -- اختياري: نبّهني إذا نزل تحت هذا

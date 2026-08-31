@@ -1,35 +1,47 @@
-// صفحة لوحة التحكم — HTML+CSS+JS في ملف واحد (بلا إطار، بلا خطوة بناء).
+// صفحة لوحة التحكم — HTML+CSS+JS في ملف واحد (بلا إطار، بلا خطوة بناء). سمة فاتحة.
 export const DASHBOARD_HTML = /* html */ `<!doctype html>
 <html lang="ar" dir="rtl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>متتبّع أسعار شي إن</title>
 <style>
-  :root{--bg:#0f172a;--card:#1e293b;--line:#334155;--ink:#e2e8f0;--sub:#94a3b8;--accent:#38bdf8;--green:#4ade80;--red:#f87171;--amber:#fbbf24}
-  *{box-sizing:border-box}body{margin:0;font-family:system-ui,'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-  .wrap{max-width:960px;margin:0 auto;padding:20px}
+  :root{
+    --bg:#f1f5f9;--card:#ffffff;--line:#e2e8f0;--ink:#0f172a;--sub:#64748b;
+    --accent:#2563eb;--accent-bg:#eff6ff;
+    --green:#16a34a;--green-bg:#f0fdf4;--red:#dc2626;--red-bg:#fef2f2;--amber:#d97706;--amber-bg:#fffbeb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .wrap{max-width:980px;margin:0 auto;padding:20px}
   h1{font-size:19px;margin:0 0 4px}.muted{color:var(--sub);font-size:12px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
-  input,select,button{font:inherit;border-radius:9px;border:1px solid var(--line);background:#0b1220;color:var(--ink);padding:9px 11px}
-  button{background:var(--accent);color:#04222f;font-weight:800;border:0;cursor:pointer}
-  button.ghost{background:transparent;color:var(--sub);border:1px solid var(--line)}
-  button.danger{background:transparent;color:var(--red);border:1px solid #7f1d1d}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+  input,select,button{font:inherit;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 11px}
+  input:focus,select:focus{outline:2px solid var(--accent-bg);border-color:var(--accent)}
+  button{background:var(--accent);color:#fff;font-weight:800;border:0;cursor:pointer}
+  button.ghost{background:#fff;color:var(--sub);border:1px solid var(--line)}
+  button.danger{background:#fff;color:var(--red);border:1px solid #fecaca}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
-  th,td{text-align:right;padding:8px;border-bottom:1px solid var(--line)}th{color:var(--sub);font-weight:700}
+  th,td{text-align:right;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--sub);font-weight:700}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .tabbar{display:flex;gap:6px;margin-bottom:14px}.tabbar button{background:#0b1220;color:var(--sub);border:1px solid var(--line)}
-  .tabbar button.on{background:var(--card);color:var(--ink)}
+  .tabbar{display:flex;gap:6px;margin-bottom:14px}
+  .tabbar button{background:#fff;color:var(--sub);border:1px solid var(--line)}
+  .tabbar button.on{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
   .pill{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-  .drop{background:#052e1a;color:var(--green)}.rise{background:#3b0a0a;color:var(--red)}.stock{background:#3b2c05;color:var(--amber)}
-  a{color:var(--accent)}.hidden{display:none}
+  .drop{background:var(--green-bg);color:var(--green)}.rise{background:var(--red-bg);color:var(--red)}.stock{background:var(--amber-bg);color:var(--amber)}
+  .thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#f1f5f9;border:1px solid var(--line)}
+  .sku{font-family:ui-monospace,monospace;font-size:11px;color:var(--sub);background:#f8fafc;padding:1px 6px;border-radius:6px}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .hidden{display:none}
   #msg{font-size:12px;color:var(--accent);min-height:16px}
 </style></head><body>
 <div class="wrap">
 
   <div id="loginView" class="hidden">
-    <div class="card" style="max-width:340px;margin:60px auto">
-      <h1>متتبّع أسعار شي إن</h1><p class="muted">أدخل كلمة المرور للمتابعة</p>
-      <div class="row" style="margin-top:12px">
-        <input id="pw" type="password" placeholder="كلمة المرور" style="flex:1" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="card" style="max-width:360px;margin:60px auto">
+      <h1>متتبّع أسعار شي إن</h1><p class="muted">سجّل الدخول للمتابعة</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        <input id="em" type="email" placeholder="البريد الإلكتروني" autocomplete="username">
+        <input id="pw" type="password" placeholder="كلمة المرور" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
         <button onclick="doLogin()">دخول</button>
       </div>
       <div id="loginErr" class="muted" style="color:var(--red);margin-top:8px"></div>
@@ -63,7 +75,7 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
         </div>
       </div>
       <div class="card"><table><thead><tr>
-        <th>المنتج</th><th>السعر الحالي</th><th>المستهدف</th><th>مخزون</th><th>آخر فحص</th><th>القناة</th><th></th>
+        <th>صورة</th><th>المنتج</th><th>SKU</th><th>السعر الحالي</th><th>المستهدف</th><th>مخزون</th><th>آخر فحص</th><th>القناة</th><th></th>
       </tr></thead><tbody id="pRows"></tbody></table></div>
     </div>
 
@@ -108,13 +120,13 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
 const $=s=>document.querySelector(s);
 let msgT;
 function flash(t){$('#msg').textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>$('#msg').textContent='',5000)}
-async function api(path,opts){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},...opts});if(r.status===401){show('login');throw new Error('unauth')}return r.json()}
+async function api(path,opts){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},...opts});if(r.status===401&&path!=='/login'){show('login');throw new Error('unauth')}return r.json()}
 function show(v){$('#loginView').classList.toggle('hidden',v!=='login');$('#appView').classList.toggle('hidden',v==='login');if(v==='app')loadAll()}
 function tab(t){for(const b of document.querySelectorAll('.tabbar button'))b.classList.toggle('on',b.dataset.tab===t);
   for(const id of ['products','events','settings'])$('#tab-'+id).classList.toggle('hidden',id!==t)}
 
-async function doLogin(){const j=await api('/login',{method:'POST',body:JSON.stringify({password:$('#pw').value})});
-  if(j.ok)show('app');else $('#loginErr').textContent='كلمة مرور خاطئة'}
+async function doLogin(){const j=await api('/login',{method:'POST',body:JSON.stringify({email:$('#em').value.trim(),password:$('#pw').value})});
+  if(j.ok)show('app');else $('#loginErr').textContent='بيانات دخول خاطئة'}
 async function doLogout(){await api('/logout',{method:'POST'});show('login')}
 
 async function loadAll(){loadProducts();loadEvents();loadSettings()}
@@ -122,8 +134,10 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
   const latest=j.products.map(p=>p.last_checked_at).filter(Boolean).sort().pop();
   $('#stat').textContent=cnt+' منتج · آخر تحديث من الجالب: '+(latest?new Date(latest).toLocaleString('ar'):'لم يصل بعد');
   $('#pRows').innerHTML=j.products.map(p=>\`<tr>
+    <td>\${p.image_url?\`<a href="\${p.url}" target="_blank"><img class="thumb" src="\${p.image_url}" loading="lazy" onerror="this.style.visibility='hidden'"></a>\`:'<div class="thumb"></div>'}</td>
     <td><a href="\${p.url}" target="_blank">\${p.label||('#'+p.id)}</a></td>
-    <td>\${p.last_price??'—'} \${p.currency||''}</td>
+    <td>\${p.sku?\`<span class="sku">\${p.sku}</span>\`:(p.goods_id?\`<span class="sku">\${p.goods_id}</span>\`:'—')}</td>
+    <td><b>\${p.last_price??'—'}</b> \${p.currency||''}</td>
     <td>\${p.target_price??'—'}</td>
     <td>\${p.last_in_stock==null?'—':(p.last_in_stock?'✅':'⛔️')}</td>
     <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'—'}\${p.consecutive_failures?' ⚠️'+p.consecutive_failures:''}</td>
@@ -131,10 +145,10 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
     <td class="row">
       <button class="ghost" onclick="toggleP(\${p.id},\${p.active?0:1})">\${p.active?'إيقاف':'تفعيل'}</button>
       <button class="danger" onclick="delP(\${p.id})">حذف</button>
-    </td></tr>\`).join('')||'<tr><td colspan=7 class="muted">لا منتجات بعد</td></tr>'}
+    </td></tr>\`).join('')||'<tr><td colspan=9 class="muted">لا منتجات بعد</td></tr>'}
 async function addProduct(){const url=$('#p_url').value.trim();if(!url)return;
   await api('/products',{method:'POST',body:JSON.stringify({url,label:$('#p_label').value.trim(),target_price:parseFloat($('#p_target').value)||null,notify_channel:$('#p_channel').value})});
-  $('#p_url').value=$('#p_label').value=$('#p_target').value='';flash('أُضيف — سيُفحص خلال دقيقة');loadProducts()}
+  $('#p_url').value=$('#p_label').value=$('#p_target').value='';flash('أُضيف — سيُفحص خلال دقائق');loadProducts()}
 async function toggleP(id,active){await api('/products/'+id,{method:'PATCH',body:JSON.stringify({active})});loadProducts()}
 async function delP(id){if(!confirm('حذف المنتج وسجلّه؟'))return;await api('/products/'+id,{method:'DELETE'});loadProducts();loadEvents()}
 
@@ -155,5 +169,6 @@ async function saveSettings(){await api('/settings',{method:'PUT',body:JSON.stri
   resend_api_key:s_re_key.value.trim(),resend_from:s_re_from.value.trim(),resend_to:s_re_to.value.trim(),
   default_channel:s_default.value,watchdog_minutes:s_watchdog.value})});flash('حُفظت')}
 async function testTelegram(){const j=await api('/test-telegram',{method:'POST'});flash(j.ok?'✅ وصلت رسالة الاختبار':'تعذّر: '+(j.reason||''))}
+
 (async()=>{try{const j=await api('/me');show(j.authed?'app':'login')}catch{show('login')}})();
 </script></body></html>`;

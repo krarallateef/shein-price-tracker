@@ -56,7 +56,7 @@ async function fetchOne(p) {
     if (!res.ok && html.length < 3000) return { id: p.id, error: `http_${res.status}` };
     const parsed = parsePrice(html);
     if (!parsed) return { id: p.id, error: 'price_not_found — قد يحتاج parse.js تحديثاً' };
-    return { id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock };
+    return { id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku };
   } catch (e) {
     return { id: p.id, error: String(e.message || e).slice(0, 200) };
   }

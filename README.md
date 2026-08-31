@@ -34,6 +34,7 @@ npx wrangler whoami           # تأكّد من الحساب
 npx wrangler d1 create shein-tracker-db          # انسخ database_id → wrangler.jsonc
 npx wrangler d1 execute shein-tracker-db --remote --file schema.sql
 
+npx wrangler secret put ADMIN_EMAIL             # بريد دخول اللوحة
 npx wrangler secret put ADMIN_PASSWORD          # كلمة مرور اللوحة
 npx wrangler secret put AUTH_SECRET             # نص عشوائي طويل
 npx wrangler secret put INGEST_TOKEN            # نص عشوائي طويل (نفسه في fetcher/.env)

@@ -1,6 +1,6 @@
-// استخراج السعر/المخزون من HTML صفحة منتج شي إن. بلا أي تبعية — يستورده
-// كلٌّ من الـ Worker والجالب المحلي (fetcher/check.mjs). حدّث هذا الملف وحده
-// إذا غيّرت شي إن شكل صفحاتها.
+// استخراج السعر/المخزون/الصورة/SKU من HTML صفحة منتج شي إن. بلا أي تبعية —
+// يستورده كلٌّ من الـ Worker والجالب المحلي (fetcher/check.mjs). حدّث هذا الملف
+// وحده إذا غيّرت شي إن شكل صفحاتها.
 
 export function extractGoodsId(url) {
   const s = String(url);
@@ -8,11 +8,34 @@ export function extractGoodsId(url) {
   return m ? m[1] : null;
 }
 
-// يُعيد { price:Number, currency:String|null, inStock:Boolean|null } أو null.
+// الصورة الرئيسية — og:image ثم JSON-LD image ثم أول صورة منتج في كتلة شي إن.
+function extractImage(html) {
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+  if (og) return og[1];
+  const ld = html.match(/"image"\s*:\s*"(https?:[^"]+)"/) || html.match(/"image"\s*:\s*\[\s*"(https?:[^"]+)"/);
+  if (ld) return ld[1];
+  const sh = html.match(/"(?:goods_img|original_img|img_url)"\s*:\s*"(https?:[^"]+)"/);
+  if (sh) return sh[1].replace(/\\u002F/g, '/').replace(/\\\//g, '/');
+  return null;
+}
+
+// SKU — رمز المنتج (goods_sn في شي إن) ثم JSON-LD sku/mpn.
+function extractSku(html) {
+  const sn = html.match(/"goods_sn"\s*:\s*"([A-Za-z0-9_-]+)"/);
+  if (sn) return sn[1];
+  const ld = html.match(/"(?:sku|mpn)"\s*:\s*"([A-Za-z0-9_-]+)"/);
+  if (ld) return ld[1];
+  return null;
+}
+
+// يُعيد { price, currency, inStock, image, sku } أو null.
 export function parsePrice(html) {
   if (!html || html.length < 500) return null;
+  const image = extractImage(html);
+  const sku = extractSku(html);
+  const withExtras = (o) => ({ ...o, image: o.image ?? image, sku: o.sku ?? sku });
 
-  // أ) JSON-LD (الأنظف حين يتوفّر)
+  // أ) JSON-LD
   for (const b of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const data = JSON.parse(b[1].trim());
@@ -24,13 +47,18 @@ export function parsePrice(html) {
         const price = parseFloat(offer.price ?? offer.lowPrice ?? offer.priceSpecification?.price);
         if (Number.isFinite(price) && price > 0) {
           const avail = String(offer.availability || '').toLowerCase();
-          return { price, currency: offer.priceCurrency || null, inStock: avail ? avail.includes('instock') : null };
+          const img = Array.isArray(n.image) ? n.image[0] : n.image;
+          return withExtras({
+            price, currency: offer.priceCurrency || null,
+            inStock: avail ? avail.includes('instock') : null,
+            image: img || null, sku: n.sku || n.mpn || null,
+          });
         }
       }
     } catch { /* التالي */ }
   }
 
-  // ب) كتلة شي إن الداخلية (productIntroData / detail JSON)
+  // ب) كتلة شي إن الداخلية
   const b1 =
     html.match(/"salePrice"\s*:\s*\{[^{}]*?"amount"\s*:\s*"([\d.]+)"/) ||
     html.match(/"salePrice"\s*:\s*\{[^{}]*?"amountWithSymbol"\s*:\s*"[^\d]*([\d.,]+)"/) ||
@@ -40,12 +68,10 @@ export function parsePrice(html) {
   if (b1) {
     const price = parseFloat(String(b1[1]).replace(/,/g, ''));
     if (Number.isFinite(price) && price > 0) {
-      const cur =
-        html.match(/"currency"\s*:\s*"([A-Z]{3})"/) ||
-        html.match(/priceCurrency["\s:]+"([A-Z]{3})"/);
+      const cur = html.match(/"currency"\s*:\s*"([A-Z]{3})"/) || html.match(/priceCurrency["\s:]+"([A-Z]{3})"/);
       const soldOut = /"is_on_sale"\s*:\s*0[\s\S]{0,200}"stock"\s*:\s*0|"sold_out_tips"|out.?of.?stock|SOLD\s*OUT/i.test(html);
       const inStockHint = /"is_sold_out"\s*:\s*0|"stock"\s*:\s*[1-9]/i.test(html);
-      return { price, currency: cur ? cur[1] : null, inStock: soldOut ? false : inStockHint ? true : null };
+      return withExtras({ price, currency: cur ? cur[1] : null, inStock: soldOut ? false : inStockHint ? true : null });
     }
   }
 
@@ -58,7 +84,7 @@ export function parsePrice(html) {
     const price = parseFloat(mp[1]);
     if (Number.isFinite(price) && price > 0) {
       const mc = html.match(/<meta[^>]+property=["']product:price:currency["'][^>]+content=["']([A-Z]{3})["']/i);
-      return { price, currency: mc ? mc[1] : null, inStock: null };
+      return withExtras({ price, currency: mc ? mc[1] : null, inStock: null });
     }
   }
 

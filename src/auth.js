@@ -25,11 +25,13 @@ function safeEqual(a, b) {
   return out === 0;
 }
 
-export async function checkPassword(env, password) {
-  if (!env.ADMIN_PASSWORD) return false;
-  const a = await sha256hex(String(password || ''));
-  const b = await sha256hex(env.ADMIN_PASSWORD);
-  return safeEqual(a, b);
+export async function checkCredentials(env, email, password) {
+  if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) return false;
+  const e = await sha256hex(String(email || '').trim().toLowerCase());
+  const eOk = safeEqual(e, await sha256hex(env.ADMIN_EMAIL.trim().toLowerCase()));
+  const p = await sha256hex(String(password || ''));
+  const pOk = safeEqual(p, await sha256hex(env.ADMIN_PASSWORD));
+  return eOk && pOk;
 }
 
 export async function issueCookie(env) {

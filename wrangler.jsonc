@@ -19,6 +19,7 @@
 		"MAX_FAILURES": "5"
 	},
 	// الأسرار (wrangler secret put):
+	//   ADMIN_EMAIL     — بريد دخول لوحة التحكم
 	//   ADMIN_PASSWORD  — كلمة مرور لوحة التحكم
 	//   AUTH_SECRET     — سرّ توقيع كوكي الجلسة
 	//   INGEST_TOKEN    — سرّ مشترك مع الجالب المحلي (fetcher/.env)

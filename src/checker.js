@@ -49,8 +49,9 @@ export async function applyResult(env, r) {
 
   await env.DB.prepare(
     `UPDATE products SET goods_id=COALESCE(goods_id,?), currency=COALESCE(currency,?),
+     image_url=COALESCE(?, image_url), sku=COALESCE(?, sku),
      last_price=?, last_in_stock=?, last_checked_at=?, consecutive_failures=0, last_error=NULL WHERE id=?`
-  ).bind(p.goods_id || extractGoodsId(p.url), currency, newPrice, newStock, now, p.id).run();
+  ).bind(p.goods_id || extractGoodsId(p.url), currency, r.image || null, r.sku || null, newPrice, newStock, now, p.id).run();
 
   const minPct = parseFloat(env.MIN_CHANGE_PCT) || 3;
   const events = [];
