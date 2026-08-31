@@ -28,31 +28,63 @@ if (!WORKER_URL || !TOKEN) {
   process.exit(1);
 }
 
-const UA_BY_REGION = {
-  ar: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Mobile Safari/537.36',
-};
-const LANG_BY_REGION = { ar: 'ar,en;q=0.8', www: 'en-US,en;q=0.9' };
+const UA = 'Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.105 Mobile Safari/537.36';
+const LANG_BY_REGION = { ar: 'ar-IQ,ar;q=0.9,en-US;q=0.8,en;q=0.7', www: 'en-US,en;q=0.9' };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const stamp = () => new Date().toISOString();
 
+// ترويسات متصفّح Chrome كاملة — Akamai يفحص وجودها وترتيبها.
+function browserHeaders(lang, referer) {
+  const h = {
+    'User-Agent': UA,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': lang,
+    'Accept-Encoding': 'gzip, deflate, br',
+    'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+    'sec-ch-ua-mobile': '?1',
+    'sec-ch-ua-platform': '"Android"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': referer ? 'same-origin' : 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+  };
+  if (referer) h['Referer'] = referer;
+  return h;
+}
+
+// يجمع كوكيز Set-Cookie من استجابة (undici يعطيها مفصولة بـ getSetCookie).
+function collectCookies(res, jar) {
+  const list = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
+  for (const c of list) {
+    const [pair] = c.split(';');
+    const i = pair.indexOf('=');
+    if (i > 0) jar[pair.slice(0, i).trim()] = pair.slice(i + 1).trim();
+  }
+}
+const cookieHeader = (jar) => Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+
 async function fetchOne(p) {
   const region = p.region || 'ar';
-  const ua = UA_BY_REGION[region] || UA_BY_REGION.ar;
   const lang = LANG_BY_REGION[region] || LANG_BY_REGION.ar;
+  const origin = `https://${region === 'www' ? 'www' : region}.shein.com`;
+  const jar = {};
   try {
-    const res = await fetch(p.url, {
-      headers: {
-        'User-Agent': ua,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': lang,
-        'Cache-Control': 'no-cache',
-        'Upgrade-Insecure-Requests': '1',
-      },
-      redirect: 'follow',
-    });
+    // ١) تسخين: زيارة الصفحة الرئيسية للحصول على كوكيز الجلسة/الحماية.
+    try {
+      const home = await fetch(origin + '/', { headers: browserHeaders(lang), redirect: 'follow' });
+      collectCookies(home, jar);
+      await home.text().catch(() => {});
+      await sleep(500 + Math.random() * 800);
+    } catch { /* نكمل بلا تسخين */ }
+
+    // ٢) صفحة المنتج بنفس الكوكيز + Referer.
+    const headers = browserHeaders(lang, origin + '/');
+    if (Object.keys(jar).length) headers['Cookie'] = cookieHeader(jar);
+    const res = await fetch(p.url, { headers, redirect: 'follow' });
     const html = await res.text();
-    if (isBlockPage(html)) return { id: p.id, error: `block_page (${res.status}) — IP قد يكون محظوراً` };
+    if (isBlockPage(html)) return { id: p.id, error: `block_page (${res.status})` };
     if (!res.ok && html.length < 3000) return { id: p.id, error: `http_${res.status}` };
     const parsed = parsePrice(html);
     if (!parsed) return { id: p.id, error: 'price_not_found — قد يحتاج parse.js تحديثاً' };
