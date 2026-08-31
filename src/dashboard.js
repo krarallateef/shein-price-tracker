@@ -40,7 +40,7 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
     <div class="row" style="justify-content:space-between">
       <div><h1>متتبّع أسعار شي إن</h1><div class="muted" id="stat"></div></div>
       <div class="row">
-        <button class="ghost" onclick="checkNow()">↻ افحص الآن</button>
+        <button class="ghost" onclick="loadAll()">↻ تحديث</button>
         <button class="ghost" onclick="doLogout()">خروج</button>
       </div>
     </div>
@@ -95,6 +95,8 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
         <div class="row">
           <label>القناة الافتراضية</label>
           <select id="s_default"><option value="telegram">تلغرام</option><option value="email">إيميل</option><option value="both">الاثنان</option></select>
+          <label>تنبيه توقّف الجالب بعد (دقائق)</label>
+          <input id="s_watchdog" type="number" value="60" style="width:90px">
           <button onclick="saveSettings()">حفظ الإعدادات</button>
         </div>
       </div>
@@ -117,7 +119,8 @@ async function doLogout(){await api('/logout',{method:'POST'});show('login')}
 
 async function loadAll(){loadProducts();loadEvents();loadSettings()}
 async function loadProducts(){const j=await api('/products');const cnt=j.products.length;
-  $('#stat').textContent=cnt+' منتج · فحص كل دقيقة (دفعة '+j.batch+')';
+  const latest=j.products.map(p=>p.last_checked_at).filter(Boolean).sort().pop();
+  $('#stat').textContent=cnt+' منتج · آخر تحديث من الجالب: '+(latest?new Date(latest).toLocaleString('ar'):'لم يصل بعد');
   $('#pRows').innerHTML=j.products.map(p=>\`<tr>
     <td><a href="\${p.url}" target="_blank">\${p.label||('#'+p.id)}</a></td>
     <td>\${p.last_price??'—'} \${p.currency||''}</td>
@@ -146,13 +149,11 @@ async function loadEvents(){const j=await api('/events');
 async function loadSettings(){const j=await api('/settings');const s=j.settings;
   s_tg_token.value=s.telegram_token||'';s_tg_chat.value=s.telegram_chat_id||'';
   s_re_key.value=s.resend_api_key||'';s_re_from.value=s.resend_from||'';s_re_to.value=s.resend_to||'';
-  s_default.value=s.default_channel||'telegram'}
+  s_default.value=s.default_channel||'telegram';s_watchdog.value=s.watchdog_minutes||'60'}
 async function saveSettings(){await api('/settings',{method:'PUT',body:JSON.stringify({
   telegram_token:s_tg_token.value.trim(),telegram_chat_id:s_tg_chat.value.trim(),
   resend_api_key:s_re_key.value.trim(),resend_from:s_re_from.value.trim(),resend_to:s_re_to.value.trim(),
-  default_channel:s_default.value})});flash('حُفظت')}
+  default_channel:s_default.value,watchdog_minutes:s_watchdog.value})});flash('حُفظت')}
 async function testTelegram(){const j=await api('/test-telegram',{method:'POST'});flash(j.ok?'✅ وصلت رسالة الاختبار':'تعذّر: '+(j.reason||''))}
-async function checkNow(){flash('جاري الفحص…');const j=await api('/check-now',{method:'POST'});flash('فُحص '+j.checked+' منتج · '+(j.results.filter(r=>r.events).length)+' تغيّر');loadProducts();loadEvents()}
-
 (async()=>{try{const j=await api('/me');show(j.authed?'app':'login')}catch{show('login')}})();
 </script></body></html>`;

@@ -7,5 +7,5 @@ ADMIN_PASSWORD=change-me-please
 # سرّ توقيع كوكي الجلسة — أي نص عشوائي طويل.
 AUTH_SECRET=generate-a-long-random-string
 
-# اختياري: مفتاح jina المجاني لرفع حد الطلبات (احصل عليه من https://jina.ai).
-JINA_API_KEY=
+# سرّ مشترك بين الـ Worker والجالب المحلي (fetcher/.env) — أي نص عشوائي طويل.
+INGEST_TOKEN=generate-another-long-random-string

@@ -1,73 +1,78 @@
-# متتبّع أسعار شي إن (Shein) — Cloudflare Worker
+# متتبّع أسعار شي إن (Shein)
 
-مشروع **مستقل تماماً** — لا علاقة له بـ KIDA. Worker واحد يخدم لوحة تحكم + API + كرون
-يفحص أسعار منتجات محدّدة كل دقيقة (دفعة صغيرة دوّارة) ويُنبّه عبر تلغرام/إيميل عند التغيّر.
+مشروع **مستقل تماماً** — لا علاقة له بـ KIDA.
 
-## المكوّنات
+شي إن يحظر عناوين مراكز البيانات (جرّبناه: `page_risk_crawler_block`)، فالمعمارية **هجينة**:
 
-| | |
+```
+جهاز أندرويد (Termux, IP منزلي)          Cloudflare Worker (مجاني)
+  fetcher/check.mjs                        GET  /api/due    → قائمة المنتجات
+  • يجلب صفحات شي إن كل 1–5 دقائق  ───────▶ POST /api/ingest → مقارنة + تسجيل + تنبيه
+  • يستخرج السعر (src/parse.js)             GET  /           → لوحة التحكم
+  • يرسل النتائج للـ Worker                 Cron */15        → حارس: ينبّه لو توقّف الجالب
+                                           D1: products · price_events · settings
+```
+
+| المكوّن | الدور |
 |---|---|
-| التشغيل | Cloudflare Workers (مجاني) |
-| التخزين | D1 (`shein-tracker-db`) — جداول: `products`, `price_events`, `settings` |
-| الجدولة | Cron `* * * * *` — كل دقيقة، `BATCH_SIZE` منتجات/تشغيل |
-| جلب السعر | `fetch` مباشر → `r.jina.ai` (احتياطي، مجاني) |
-| التنبيه | Telegram Bot API (مجاني) · Resend (إيميل، اختياري) |
-| اللوحة | صفحة واحدة بكلمة مرور — إضافة روابط + سجلّ تغيّرات + إعدادات البوت |
+| **Worker** | لوحة تحكم بكلمة مرور · تخزين D1 · مقارنة الأسعار · التنبيهات · حارس التوقّف |
+| **الجالب (Termux)** | جلب صفحات شي إن + استخراج السعر فقط (بلا حالة) |
+| التنبيه | Telegram (مجاني) · Resend (إيميل، اختياري) |
 
-## الإعداد (مرة واحدة)
+---
 
-> نفّذ كل شيء من داخل مجلد المشروع هذا. لن يمسّ أي حساب/مشروع آخر.
+## أ) إعداد الـ Worker (مرة واحدة)
+
+> نفّذ من داخل هذا المجلد. لا يمسّ أي حساب/مشروع آخر.
 
 ```bash
-# 1) التبعيات
 npm install
 
-# 2) سجّل الدخول لحساب Cloudflare المخصّص لهذا المشروع (يُفضّل حساب منفصل عن KIDA)
-npx wrangler login
-npx wrangler whoami            # تأكّد أنه الحساب الصحيح
+npx wrangler login            # حساب Cloudflare مخصّص لهذا المشروع (يُفضّل منفصل عن KIDA)
+npx wrangler whoami           # تأكّد من الحساب
 
-# 3) أنشئ قاعدة D1 — انسخ database_id الناتج إلى wrangler.jsonc
-npx wrangler d1 create shein-tracker-db
-
-# 4) طبّق المخطّط
+npx wrangler d1 create shein-tracker-db          # انسخ database_id → wrangler.jsonc
 npx wrangler d1 execute shein-tracker-db --remote --file schema.sql
 
-# 5) الأسرار (لا تُكتب بالكود)
-npx wrangler secret put ADMIN_PASSWORD      # كلمة مرور اللوحة
-npx wrangler secret put AUTH_SECRET         # أي نص عشوائي طويل لتوقيع الجلسة
-npx wrangler secret put JINA_API_KEY        # اختياري — من jina.ai لرفع حد الطلبات
+npx wrangler secret put ADMIN_PASSWORD          # كلمة مرور اللوحة
+npx wrangler secret put AUTH_SECRET             # نص عشوائي طويل
+npx wrangler secret put INGEST_TOKEN            # نص عشوائي طويل (نفسه في fetcher/.env)
 
-# 6) انشر
 npx wrangler deploy
 ```
 
-بعد النشر: افتح `https://shein-price-tracker.<اسمك>.workers.dev` ← أدخل كلمة المرور ←
-تبويب «الإعدادات» ← ضع توكن بوت تلغرام + Chat ID ← «اختبار» ← أضف روابط المنتجات.
+بعده: افتح `https://shein-price-tracker.<اسمك>.workers.dev` ← كلمة المرور ←
+تبويب «الإعدادات» ← توكن بوت تلغرام + Chat ID ← «اختبار» ← أضف روابط المنتجات.
 
-### إنشاء بوت تلغرام
-1. راسل **@BotFather** ← `/newbot` ← خذ الـ **token**.
-2. راسل بوتك الجديد بأي رسالة.
-3. راسل **@userinfobot** ← يعطيك **Chat ID**.
+### بوت تلغرام
+راسل **@BotFather** ← `/newbot` ← خذ الـ token. راسل بوتك بأي رسالة.
+راسل **@userinfobot** ← يعطيك الـ Chat ID.
 
-## التطوير المحلي
+## ب) إعداد الجالب على أندرويد
+
+راجع **[fetcher/README.md](fetcher/README.md)** — خطوات Termux + Termux:Boot كاملة.
+باختصار: `git clone` المشروع على الجهاز، `cp fetcher/.env.example fetcher/.env` واملأه،
+ثم انسخ `fetcher/boot-start.sh` إلى `~/.termux/boot/start.sh`.
+
+---
+
+## الضبط
+
+- **`wrangler.jsonc` → vars**: `MIN_CHANGE_PCT` (٣٪ — عتبة التنبيه)، `MAX_FAILURES` (٥).
+- **اللوحة → الإعدادات**: «تنبيه توقّف الجالب بعد (دقائق)» — الافتراضي ٦٠.
+- **`fetcher/boot-start.sh` → `INTERVAL`**: ٣٠٠ ثانية (٥ دقائق). غيّره لـ ٦٠ لأقصى تكرار.
+
+## التطوير المحلي للـ Worker
 
 ```bash
-cp .dev.vars.example .dev.vars      # واملأ القيم
-npm run db:local                    # مخطّط على D1 المحلي
+cp .dev.vars.example .dev.vars    # واملأ القيم
+npm run db:local
 npm run dev
-# اختبار الكرون: curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
 ```
-
-## الضبط (`wrangler.jsonc` → `vars`)
-
-- `BATCH_SIZE` (6) — منتجات تُفحص كل دقيقة. ارفعه لدورة أسرع، راقب `wrangler tail`.
-- `MIN_CHANGE_PCT` (3) — لا تنبيه إلا إذا تغيّر السعر بأكثر من هذه النسبة.
-- `MAX_FAILURES` (5) — بعدها يُنبَّه المنتج مرة ويُباعَد فحصه.
 
 ## ملاحظات
 
-- شروط شي إن تمنع الوصول الآلي؛ هذا للاستخدام الشخصي منخفض الحجم (كـ Keepa/CamelCamelCamel).
-  أبقِ عدد المنتجات معقولاً ولا تُعِد نشر البيانات.
-- لو تغيّر شكل صفحات شي إن وتوقّف استخراج السعر: عدّل `parsePrice()` في `src/checker.js`
-  (سلسلة بدائل: JSON-LD → كتلة شي إن الداخلية → وسم meta).
-- حدود الباقة المجانية: 100k طلب/يوم، 10ms CPU/تشغيل كرون، 3 كرون/Worker.
+- شروط شي إن تمنع الوصول الآلي؛ هذا استخدام شخصي منخفض الحجم (كـ Keepa/CamelCamelCamel).
+- لو توقّف استخراج السعر: عدّل `src/parse.js` (سلسلة بدائل: JSON-LD → كتلة شي إن → meta)،
+  ادفع، ثم `git pull` على جهاز الأندرويد.
+- حدود Worker المجاني: 100k طلب/يوم، 3 كرون/Worker.
