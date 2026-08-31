@@ -67,10 +67,9 @@ async function fetchViaBrowser(products, chromePath) {
     headless,
     args: [
       '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-      '--disable-gpu', '--no-zygote', '--disable-extensions',
-      '--disable-background-networking', '--window-size=412,915',
+      '--no-zygote', '--disable-extensions', '--window-size=412,915',
       '--disable-blink-features=AutomationControlled',
-      '--lang=ar-EG,ar', '--hide-scrollbars', '--mute-audio',
+      '--lang=ar-EG,ar', '--mute-audio',
     ],
   });
   const results = [];
@@ -94,21 +93,28 @@ async function fetchViaBrowser(products, chromePath) {
           if (origQuery) window.navigator.permissions.query = (p) =>
             p && p.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : origQuery(p);
         });
-        // لا نحمّل الصور/الخطوط — أسرع وأخفّ على الجهاز.
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-          const t = req.resourceType();
-          if (t === 'image' || t === 'media' || t === 'font') req.abort().catch(() => {});
-          else req.continue().catch(() => {});
-        });
-        await page.goto(p.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await sleep(2500 + Math.random() * 2000);
+        // سلوك بشري: حركة ماوس + تمرير + وقت على الصفحة كي يقبلنا Akamai.
+        const humanize = async () => {
+          try {
+            for (let i = 0; i < 5; i++) {
+              await page.mouse.move(60 + Math.random() * 300, 100 + Math.random() * 500, { steps: 8 });
+              await sleep(200 + Math.random() * 400);
+            }
+            await page.evaluate(() => new Promise((res) => {
+              let y = 0; const t = setInterval(() => { y += 250; window.scrollTo(0, y); if (y > 2500) { clearInterval(t); res(); } }, 250);
+            }));
+          } catch { /* تجاهل */ }
+        };
+        await page.goto(p.url, { waitUntil: 'networkidle2', timeout: 60000 });
+        await humanize();
+        await sleep(3000 + Math.random() * 2000);
         let html = await page.content();
-        // Akamai/شي إن يضبطان كوكي حماية في الطلب الأول ثم يسمحان بالثاني — أعد التحميل.
-        if (isBlockPage(html)) {
-          await sleep(3000);
-          await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
-          await sleep(2500 + Math.random() * 2000);
+        // شي إن/Akamai يضبطان كوكي القبول بعد أول زيارة — أعد التحميل حتى ٣ مرات.
+        for (let attempt = 0; attempt < 3 && isBlockPage(html); attempt++) {
+          await sleep(4000 + attempt * 3000);
+          await page.reload({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
+          await humanize();
+          await sleep(3000 + Math.random() * 2000);
           html = await page.content();
         }
         if (process.env.DUMP) { const { writeFileSync } = await import('node:fs'); writeFileSync(join(HERE, 'debug.html'), html); console.error(`  ↳ dumped ${html.length}b → debug.html`); }
