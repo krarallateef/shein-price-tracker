@@ -1,0 +1,4 @@
+# الملفات التي تعمل على أندرويد/لينكس يجب أن تبقى بنهايات أسطر LF
+*.sh   text eol=lf
+fetcher/**   text eol=lf
+schema.sql   text eol=lf
