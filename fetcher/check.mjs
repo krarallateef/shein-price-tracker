@@ -102,6 +102,7 @@ async function fetchViaBrowser(products, chromePath) {
           await sleep(2500 + Math.random() * 2000);
           html = await page.content();
         }
+        if (process.env.DUMP) { const { writeFileSync } = await import('node:fs'); writeFileSync(join(HERE, 'debug.html'), html); console.error(`  ↳ dumped ${html.length}b → debug.html`); }
         if (isBlockPage(html)) { results.push({ id: p.id, error: `block_page (browser)` }); }
         else {
           const parsed = parsePrice(html);
