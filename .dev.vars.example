@@ -1,0 +1,11 @@
+# انسخه إلى .dev.vars للتطوير المحلي (لا يُرفع — في .gitignore).
+# على السحابة تُضبط بـ: wrangler secret put <NAME>
+
+# كلمة مرور لوحة التحكم (الدخول الوحيد).
+ADMIN_PASSWORD=change-me-please
+
+# سرّ توقيع كوكي الجلسة — أي نص عشوائي طويل.
+AUTH_SECRET=generate-a-long-random-string
+
+# اختياري: مفتاح jina المجاني لرفع حد الطلبات (احصل عليه من https://jina.ai).
+JINA_API_KEY=
