@@ -6,3 +6,8 @@ fetcher/last-run.log
 dist/
 *.log
 .DS_Store
+
+# ملفات محلية — لا تُرفع أبداً
+pass.txt
+.claude/
+*.secret
