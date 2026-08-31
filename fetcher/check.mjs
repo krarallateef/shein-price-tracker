@@ -51,7 +51,16 @@ function findChromium() {
 
 // ── المسار ١: متصفّح حقيقي (Chromium + puppeteer-core) ──────────────
 async function fetchViaBrowser(products, chromePath) {
-  const { default: puppeteer } = await import('puppeteer-core');
+  let puppeteer;
+  try {
+    const [{ addExtra }, pcore, { default: Stealth }] = await Promise.all([
+      import('puppeteer-extra'), import('puppeteer-core'), import('puppeteer-extra-plugin-stealth'),
+    ]);
+    puppeteer = addExtra(pcore.default || pcore);
+    puppeteer.use(Stealth());
+  } catch {
+    puppeteer = (await import('puppeteer-core')).default; // بلا stealth
+  }
   const headless = process.env.HEADFUL ? false : 'new';
   const browser = await puppeteer.launch({
     executablePath: chromePath,

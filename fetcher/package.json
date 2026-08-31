@@ -4,6 +4,8 @@
   "type": "module",
   "description": "الجالب المحلي — يعمل على أندرويد (Termux). يستخدم متصفّح Chromium حقيقياً لتجاوز حماية شي إن.",
   "dependencies": {
-    "puppeteer-core": "^23.11.1"
+    "puppeteer-core": "^23.11.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }
