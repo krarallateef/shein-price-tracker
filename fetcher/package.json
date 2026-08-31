@@ -1,0 +1,9 @@
+{
+  "name": "shein-fetcher",
+  "private": true,
+  "type": "module",
+  "description": "الجالب المحلي — يعمل على أندرويد (Termux). يستخدم متصفّح Chromium حقيقياً لتجاوز حماية شي إن.",
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

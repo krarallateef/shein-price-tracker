@@ -13,26 +13,35 @@
 
 ```sh
 pkg update && pkg upgrade -y
-pkg install -y nodejs git termux-api
-termux-setup-storage           # اختياري
+pkg install -y nodejs git
 
-# استنسخ المشروع (ادفعه إلى GitHub أولاً، أو انسخه يدوياً)
+# متصفّح Chromium — ضروري: شي إن تحظر طلبات غير المتصفّح مهما كان IP.
+pkg install -y x11-repo
+pkg install -y chromium
+
+# استنسخ المشروع
 cd ~
 git clone <رابط-الريبو> shein-price-tracker
 cd shein-price-tracker/fetcher
 
+npm install            # يثبّت puppeteer-core فقط (بلا تنزيل متصفّح — نستخدم chromium أعلاه)
+
 # ملف الإعدادات
 cp .env.example .env
-nano .env      # ضع WORKER_URL و INGEST_TOKEN
+nano .env              # ضع WORKER_URL و INGEST_TOKEN
 ```
+
+> إذا فشل `pkg install chromium` (بعض الأجهزة/المعماريات): الجالب سيرجع تلقائياً
+> لطلب `fetch` عادي — لكنه غالباً محظور. Chromium هو الطريق الموثوق.
 
 ## ٣. جرّب يدوياً
 
 ```sh
 node check.mjs
 ```
-يجب أن يطبع سطراً مثل: `فُحص 3 · نجح 3 · تغيّرات 0`.
-لو ظهر `block_page` → جرّب إيقاف الواي‑فاي واستخدام بيانات الجوّال (IP مختلف).
+يجب أن يطبع: `[browser] فُحص 1 · نجح 1 · تغيّرات 0`.
+- `[browser]` = استخدم Chromium (جيّد). `[fetch]` = لم يجد Chromium.
+- لو ظهر `block_page (browser)` → بدّل الشبكة (واي‑فاي ↔ بيانات جوّال) وأعد المحاولة.
 
 ## ٤. التشغيل التلقائي الدائم
 
