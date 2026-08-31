@@ -1,36 +1,35 @@
 {
-  // ⚠️ مشروع مستقل تماماً — لا علاقة له بـ KIDA. اسم Worker فريد، دومين workers.dev فقط،
-  // قاعدة D1 خاصة. لا يمكن أن يكتب فوق أي شيء في حساب KIDA.
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "shein-price-tracker",
-  "main": "src/index.js",
-  "compatibility_date": "2025-01-15",
-
-  // الجلب يتم من جهاز الأندرويد (fetcher/) — شي إن يحظر عناوين مراكز البيانات.
-  // الكرون هنا = حارس فقط: ينبّه إذا توقّف الجالب المحلي عن إرسال التحديثات.
-  "triggers": {
-    "crons": ["*/15 * * * *"]
-  },
-
-  "vars": {
-    // لا تُرسل تنبيهاً إلا إذا تغيّر السعر بنسبة تفوق هذا (٪) — يكبح ضجيج التذبذب.
-    "MIN_CHANGE_PCT": "3",
-    // بعد هذا العدد من الإخفاقات المتتالية لمنتج، يُنبَّه مرة واحدة.
-    "MAX_FAILURES": "5"
-  },
-
-  // الأسرار (wrangler secret put):
-  //   ADMIN_PASSWORD  — كلمة مرور لوحة التحكم
-  //   AUTH_SECRET     — سرّ توقيع كوكي الجلسة
-  //   INGEST_TOKEN    — سرّ مشترك مع الجالب المحلي (fetcher/.env)
-
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "shein-tracker-db",
-      "database_id": "PASTE_AFTER_wrangler_d1_create"
-    }
-  ],
-
-  "observability": { "enabled": true }
+	// ⚠️ مشروع مستقل تماماً — لا علاقة له بـ KIDA. اسم Worker فريد، دومين workers.dev فقط،
+	// قاعدة D1 خاصة. لا يمكن أن يكتب فوق أي شيء في حساب KIDA.
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "shein-price-tracker",
+	"main": "src/index.js",
+	"compatibility_date": "2025-01-15",
+	// الجلب يتم من جهاز الأندرويد (fetcher/) — شي إن يحظر عناوين مراكز البيانات.
+	// الكرون هنا = حارس فقط: ينبّه إذا توقّف الجالب المحلي عن إرسال التحديثات.
+	"triggers": {
+		"crons": [
+			"*/15 * * * *"
+		]
+	},
+	"vars": {
+		// لا تُرسل تنبيهاً إلا إذا تغيّر السعر بنسبة تفوق هذا (٪) — يكبح ضجيج التذبذب.
+		"MIN_CHANGE_PCT": "3",
+		// بعد هذا العدد من الإخفاقات المتتالية لمنتج، يُنبَّه مرة واحدة.
+		"MAX_FAILURES": "5"
+	},
+	// الأسرار (wrangler secret put):
+	//   ADMIN_PASSWORD  — كلمة مرور لوحة التحكم
+	//   AUTH_SECRET     — سرّ توقيع كوكي الجلسة
+	//   INGEST_TOKEN    — سرّ مشترك مع الجالب المحلي (fetcher/.env)
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "shein-tracker-db",
+			"database_id": "568e7eb9-1477-4044-a025-e64bac0959f2"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
 }
