@@ -52,13 +52,16 @@ function findChromium() {
 // ── المسار ١: متصفّح حقيقي (Chromium + puppeteer-core) ──────────────
 async function fetchViaBrowser(products, chromePath) {
   const { default: puppeteer } = await import('puppeteer-core');
+  const headless = process.env.HEADFUL ? false : 'new';
   const browser = await puppeteer.launch({
     executablePath: chromePath,
-    headless: 'new',
+    headless,
     args: [
       '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
       '--disable-gpu', '--no-zygote', '--disable-extensions',
       '--disable-background-networking', '--window-size=412,915',
+      '--disable-blink-features=AutomationControlled',
+      '--lang=ar-EG,ar', '--hide-scrollbars', '--mute-audio',
     ],
   });
   const results = [];
@@ -72,6 +75,16 @@ async function fetchViaBrowser(products, chromePath) {
         await page.setUserAgent(UA);
         await page.setExtraHTTPHeaders({ 'Accept-Language': lang });
         await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+        // تمويه علامات الأتمتة قبل تحميل أي سكربت للصفحة.
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+          Object.defineProperty(navigator, 'languages', { get: () => ['ar-EG', 'ar', 'en-US', 'en'] });
+          Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+          window.chrome = { runtime: {}, app: {}, csi: () => {}, loadTimes: () => {} };
+          const origQuery = window.navigator.permissions && window.navigator.permissions.query;
+          if (origQuery) window.navigator.permissions.query = (p) =>
+            p && p.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : origQuery(p);
+        });
         // لا نحمّل الصور/الخطوط — أسرع وأخفّ على الجهاز.
         await page.setRequestInterception(true);
         page.on('request', (req) => {
@@ -79,10 +92,16 @@ async function fetchViaBrowser(products, chromePath) {
           if (t === 'image' || t === 'media' || t === 'font') req.abort().catch(() => {});
           else req.continue().catch(() => {});
         });
-        await page.goto(p.url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        // مهلة قصيرة كي تُحقن كتل JSON-LD / بيانات شي إن.
-        await sleep(1500 + Math.random() * 1500);
-        const html = await page.content();
+        await page.goto(p.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await sleep(2500 + Math.random() * 2000);
+        let html = await page.content();
+        // Akamai/شي إن يضبطان كوكي حماية في الطلب الأول ثم يسمحان بالثاني — أعد التحميل.
+        if (isBlockPage(html)) {
+          await sleep(3000);
+          await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+          await sleep(2500 + Math.random() * 2000);
+          html = await page.content();
+        }
         if (isBlockPage(html)) { results.push({ id: p.id, error: `block_page (browser)` }); }
         else {
           const parsed = parsePrice(html);
