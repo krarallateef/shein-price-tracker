@@ -61,9 +61,8 @@ async function fetchViaBrowser(products, chromePath) {
   } catch {
     puppeteer = (await import('puppeteer-core')).default; // بلا stealth
   }
-  // نافذة حقيقية افتراضياً (شي إن تكشف headless). HEADLESS=1 للتجاوز.
   const headless = process.env.HEADLESS ? 'new' : false;
-  const browser = await puppeteer.launch({
+  const launch = () => puppeteer.launch({
     executablePath: chromePath,
     headless,
     args: [
@@ -73,71 +72,79 @@ async function fetchViaBrowser(products, chromePath) {
       '--lang=ar-EG,ar', '--mute-audio',
     ],
   });
-  const results = [];
-  try {
-    for (const p of products) {
-      const region = p.region || 'ar';
-      const lang = LANG_BY_REGION[region] || LANG_BY_REGION.ar;
-      let page;
+
+  // جلب منتج واحد داخل متصفّح جديد (جلسة نظيفة = زيارة أولى لكل منتج).
+  async function fetchOneFresh(p) {
+    const region = p.region || 'ar';
+    const lang = LANG_BY_REGION[region] || LANG_BY_REGION.ar;
+    const origin = `https://${region === 'www' ? 'www' : region}.shein.com`;
+    const browser = await launch();
+    try {
+      const page = await browser.newPage();
+      await page.setExtraHTTPHeaders({ 'Accept-Language': lang });
+      if (process.env.FORCE_UA) {
+        await page.setUserAgent(UA);
+        await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+      }
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'languages', { get: () => ['ar-EG', 'ar', 'en-US', 'en'] });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        window.chrome = { runtime: {}, app: {}, csi: () => {}, loadTimes: () => {} };
+        const q = window.navigator.permissions && window.navigator.permissions.query;
+        if (q) window.navigator.permissions.query = (x) =>
+          x && x.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : q(x);
+      });
+      const humanize = async () => {
+        try {
+          for (let i = 0; i < 5; i++) {
+            await page.mouse.move(60 + Math.random() * 300, 100 + Math.random() * 500, { steps: 8 });
+            await sleep(200 + Math.random() * 400);
+          }
+          await page.evaluate(() => new Promise((res) => {
+            let y = 0; const t = setInterval(() => { y += 250; window.scrollTo(0, y); if (y > 2500) { clearInterval(t); res(); } }, 250);
+          }));
+        } catch { /* تجاهل */ }
+      };
+      // تسخين: زيارة الصفحة الرئيسية أولاً للحصول على كوكيز Akamai بشكل طبيعي.
       try {
-        page = await browser.newPage();
-        await page.setExtraHTTPHeaders({ 'Accept-Language': lang });
-        // لا نزوّر UA: تزويره يخلق تضارباً مع Client Hints → يكشفه شي إن.
-        // FORCE_UA=1 فقط لو احتجته للتجربة.
-        if (process.env.FORCE_UA) {
-          await page.setUserAgent(UA);
-          await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
-        }
-        // تمويه علامات الأتمتة قبل تحميل أي سكربت للصفحة.
-        await page.evaluateOnNewDocument(() => {
-          Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-          Object.defineProperty(navigator, 'languages', { get: () => ['ar-EG', 'ar', 'en-US', 'en'] });
-          Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-          window.chrome = { runtime: {}, app: {}, csi: () => {}, loadTimes: () => {} };
-          const origQuery = window.navigator.permissions && window.navigator.permissions.query;
-          if (origQuery) window.navigator.permissions.query = (p) =>
-            p && p.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : origQuery(p);
-        });
-        // سلوك بشري: حركة ماوس + تمرير + وقت على الصفحة كي يقبلنا Akamai.
-        const humanize = async () => {
-          try {
-            for (let i = 0; i < 5; i++) {
-              await page.mouse.move(60 + Math.random() * 300, 100 + Math.random() * 500, { steps: 8 });
-              await sleep(200 + Math.random() * 400);
-            }
-            await page.evaluate(() => new Promise((res) => {
-              let y = 0; const t = setInterval(() => { y += 250; window.scrollTo(0, y); if (y > 2500) { clearInterval(t); res(); } }, 250);
-            }));
-          } catch { /* تجاهل */ }
-        };
-        await page.goto(p.url, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(origin + '/', { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await humanize();
+        await sleep(2000 + Math.random() * 2000);
+      } catch { /* نكمل */ }
+      // صفحة المنتج.
+      await page.goto(p.url, { waitUntil: 'networkidle2', timeout: 60000 });
+      await humanize();
+      await sleep(3000 + Math.random() * 2000);
+      let html = await page.content();
+      for (let attempt = 0; attempt < 4 && isBlockPage(html); attempt++) {
+        await sleep(5000 + attempt * 4000);
+        await page.reload({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
         await humanize();
         await sleep(3000 + Math.random() * 2000);
-        let html = await page.content();
-        // شي إن/Akamai يضبطان كوكي القبول بعد أول زيارة — أعد التحميل حتى ٥ مرات.
-        for (let attempt = 0; attempt < 5 && isBlockPage(html); attempt++) {
-          await sleep(5000 + attempt * 4000);
-          await page.reload({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
-          await humanize();
-          await sleep(3000 + Math.random() * 2000);
-          html = await page.content();
-        }
-        if (process.env.DUMP) { const { writeFileSync } = await import('node:fs'); writeFileSync(join(HERE, 'debug.html'), html); console.error(`  ↳ dumped ${html.length}b → debug.html`); }
-        if (isBlockPage(html)) { results.push({ id: p.id, error: `block_page (browser)` }); }
-        else {
-          const parsed = parsePrice(html);
-          if (!parsed) results.push({ id: p.id, error: 'price_not_found — قد يحتاج parse.js تحديثاً' });
-          else results.push({ id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku, name: parsed.name });
-        }
-      } catch (e) {
-        results.push({ id: p.id, error: String(e.message || e).slice(0, 200) });
-      } finally {
-        if (page) await page.close().catch(() => {});
+        html = await page.content();
       }
-      await sleep(6000 + Math.random() * 6000); // فاصل أطول بين المنتجات — يخفّف حظر Akamai
+      if (process.env.DUMP) { const { writeFileSync } = await import('node:fs'); writeFileSync(join(HERE, 'debug.html'), html); console.error(`  ↳ dumped ${html.length}b → debug.html`); }
+      if (isBlockPage(html)) return { id: p.id, error: 'block_page (browser)' };
+      const parsed = parsePrice(html);
+      if (!parsed) return { id: p.id, error: 'price_not_found — قد يحتاج parse.js تحديثاً' };
+      return { id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku, name: parsed.name };
+    } catch (e) {
+      return { id: p.id, error: String(e.message || e).slice(0, 200) };
+    } finally {
+      await browser.close().catch(() => {});
     }
-  } finally {
-    await browser.close().catch(() => {});
+  }
+
+  const results = [];
+  for (const p of products) {
+    let r = await fetchOneFresh(p);
+    if (r.error === 'block_page (browser)') {           // محاولة ثانية بمتصفّح جديد تماماً
+      await sleep(15000 + Math.random() * 15000);
+      r = await fetchOneFresh(p);
+    }
+    results.push(r);
+    await sleep(8000 + Math.random() * 8000);
   }
   return results;
 }
