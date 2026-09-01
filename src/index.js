@@ -26,9 +26,12 @@ function ingestAuthed(c) {
 }
 app.get('/api/due', (c, next) => (ingestAuthed(c) ? next() : c.json({ error: 'unauthorized' }, 401)));
 app.get('/api/due', async (c) => {
-  const { results } = await c.env.DB.prepare(
-    'SELECT id, url, region, goods_id FROM products WHERE active=1 ORDER BY (last_checked_at IS NULL) DESC, last_checked_at ASC'
-  ).all();
+  // ?new=1 → المنتجات التي لم تُفحص بعد فقط (لجلب سريع للمضاف حديثاً)
+  const onlyNew = c.req.query('new') === '1';
+  const sql = onlyNew
+    ? 'SELECT id, url, region, goods_id FROM products WHERE active=1 AND last_checked_at IS NULL'
+    : 'SELECT id, url, region, goods_id FROM products WHERE active=1 ORDER BY (last_checked_at IS NULL) DESC, last_checked_at ASC';
+  const { results } = await c.env.DB.prepare(sql).all();
   return c.json({ products: results || [] });
 });
 app.post('/api/ingest', (c, next) => (ingestAuthed(c) ? next() : c.json({ error: 'unauthorized' }, 401)));

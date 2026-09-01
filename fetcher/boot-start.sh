@@ -1,16 +1,17 @@
 #!/data/data/com.termux/files/usr/bin/sh
-# مشرف بسيط: يُبقي CPU مستيقظاً، يشغّل شاشة X افتراضية (لازمة للمتصفّح
-# بوضع نافذة — شي إن تكشف headless)، ويُشغّل الجالب كل INTERVAL ثانية.
-# يُوضع في ~/.termux/boot/start.sh ليعمل تلقائياً بعد إقلاع الجهاز
-# (يتطلّب إضافة Termux:Boot من F-Droid).
+# مشرف: يبقي CPU مستيقظاً، يشغّل شاشة X افتراضية (المتصفّح يعمل بنافذة — شي إن تكشف headless)،
+# ثم حلقتان:
+#   • كل FAST ثانية: جلب سريع للمنتجات المضافة حديثاً فقط (تظهر تفاصيلها بسرعة)
+#   • كل FULL ثانية: فحص كامل لكل المنتجات
+# يوضع في ~/.termux/boot/start.sh (يتطلب Termux:Boot من F-Droid).
 
-INTERVAL=${INTERVAL:-3600}   # 3600 = كل 60 دقيقة.
+FULL=${INTERVAL:-3600}   # فحص كامل كل 60 دقيقة
+FAST=${FAST:-180}        # فحص المضاف حديثاً كل 3 دقائق
 REPO="$HOME/shein-price-tracker"
 LOG="$REPO/fetcher/last-run.log"
 
 termux-wake-lock 2>/dev/null
 
-# شاشة X افتراضية على :1 (إن لم تكن تعمل)
 export DISPLAY=:1
 if ! pgrep -f "Xvnc.*:1" >/dev/null 2>&1; then
   vncserver -localhost -SecurityTypes None :1 >/dev/null 2>&1 || vncserver -localhost :1 >/dev/null 2>&1
@@ -18,8 +19,15 @@ if ! pgrep -f "Xvnc.*:1" >/dev/null 2>&1; then
 fi
 
 cd "$REPO/fetcher" || exit 1
+last_full=0
 while true; do
-  node check.mjs >> "$LOG" 2>&1
+  now=$(date +%s)
+  if [ $((now - last_full)) -ge "$FULL" ]; then
+    node check.mjs >> "$LOG" 2>&1
+    last_full=$now
+  else
+    NEW_ONLY=1 node check.mjs >> "$LOG" 2>&1
+  fi
   tail -n 500 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
-  sleep "$INTERVAL"
+  sleep "$FAST"
 done

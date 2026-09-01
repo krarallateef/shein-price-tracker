@@ -196,10 +196,12 @@ async function fetchOneHttp(p) {
 }
 
 async function main() {
-  const dueRes = await fetch(`${WORKER_URL}/api/due`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  // NEW_ONLY=1 → يجلب فقط المنتجات المضافة حديثاً (لم تُفحص بعد) — للحلقة السريعة.
+  const newOnly = !!process.env.NEW_ONLY;
+  const dueRes = await fetch(`${WORKER_URL}/api/due${newOnly ? '?new=1' : ''}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
   if (!dueRes.ok) throw new Error(`/api/due → ${dueRes.status}`);
   const { products } = await dueRes.json();
-  if (!products.length) { console.log(`${stamp()} لا منتجات نشطة`); return; }
+  if (!products.length) { if (!newOnly) console.log(`${stamp()} لا منتجات نشطة`); return; }
 
   const chromePath = findChromium();
   let results;

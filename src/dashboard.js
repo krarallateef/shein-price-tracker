@@ -160,7 +160,7 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
     <td>\${priceCell(p.last_price,p.currency)}</td>
     <td>\${p.target_price!=null?'<span class="usd">$'+p.target_price+'</span>':'—'}</td>
     <td>\${p.last_in_stock==null?'<span class="muted">—</span>':'<span class="ind'+(p.last_in_stock?'':' off')+'" title="'+(p.last_in_stock?'متوفّر':'نفد')+'"></span>'}</td>
-    <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'—'}\${p.consecutive_failures?' <span class="ind warn" title="فشل الجلب '+p.consecutive_failures+' مرات متتالية"></span>':''}</td>
+    <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'<span class="pill stock">قيد الجلب…</span>'}\${p.consecutive_failures?' <span class="ind warn" title="فشل الجلب '+p.consecutive_failures+' مرات متتالية"></span>':''}</td>
     <td>\${({telegram:'تلغرام',email:'إيميل',both:'الاثنان'})[p.notify_channel]||'افتراضي'}</td>
     <td class="row">
       <button class="ghost" onclick="editP(\${p.id})">تعديل</button>
@@ -169,7 +169,7 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
     </td></tr>\`).join('')||'<tr><td colspan=9 class="muted">لا منتجات بعد</td></tr>'}
 async function addProduct(){const url=$('#p_url').value.trim();if(!url)return;
   await api('/products',{method:'POST',body:JSON.stringify({url,label:$('#p_label').value.trim(),target_price:parseFloat($('#p_target').value)||null,notify_channel:$('#p_channel').value})});
-  $('#p_url').value=$('#p_label').value=$('#p_target').value='';flash('أُضيف — سيُفحص خلال دقائق');loadProducts()}
+  $('#p_url').value=$('#p_label').value=$('#p_target').value='';flash('أُضيف — تظهر تفاصيله خلال ٣ دقائق تقريباً');loadProducts();setTimeout(loadProducts,60000);setTimeout(loadProducts,180000)}
 async function toggleP(id,active){await api('/products/'+id,{method:'PATCH',body:JSON.stringify({active})});loadProducts()}
 async function delP(id){if(!confirm('حذف المنتج وسجلّه؟'))return;await api('/products/'+id,{method:'DELETE'});loadProducts();loadEvents()}
 
