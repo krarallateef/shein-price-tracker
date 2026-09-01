@@ -61,7 +61,8 @@ async function fetchViaBrowser(products, chromePath) {
   } catch {
     puppeteer = (await import('puppeteer-core')).default; // بلا stealth
   }
-  const headless = process.env.HEADFUL ? false : 'new';
+  // نافذة حقيقية افتراضياً (شي إن تكشف headless). HEADLESS=1 للتجاوز.
+  const headless = process.env.HEADLESS ? 'new' : false;
   const browser = await puppeteer.launch({
     executablePath: chromePath,
     headless,
@@ -81,8 +82,9 @@ async function fetchViaBrowser(products, chromePath) {
       try {
         page = await browser.newPage();
         await page.setExtraHTTPHeaders({ 'Accept-Language': lang });
-        if (!process.env.NATIVE_UA) {
-          // UA يجب أن يطابق Client Hints — نستخدم سلسلة ديسكتوب Chrome تطابق نسخة Chromium على الجهاز.
+        // لا نزوّر UA: تزويره يخلق تضارباً مع Client Hints → يكشفه شي إن.
+        // FORCE_UA=1 فقط لو احتجته للتجربة.
+        if (process.env.FORCE_UA) {
           await page.setUserAgent(UA);
           await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
         }

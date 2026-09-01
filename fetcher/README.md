@@ -15,9 +15,14 @@
 pkg update && pkg upgrade -y
 pkg install -y nodejs git
 
-# متصفّح Chromium — ضروري: شي إن تحظر طلبات غير المتصفّح مهما كان IP.
+# متصفّح Chromium + شاشة X افتراضية — ضروري:
+# شي إن تحظر طلبات غير المتصفّح، وتكشف وضع headless. لذا نشغّل نافذة حقيقية.
 pkg install -y x11-repo
-pkg install -y chromium
+pkg install -y chromium tigervnc
+
+# جهّز شاشة X افتراضية على :1 (أول مرة يطلب كلمة مرور — اكتب أي شيء، ثم n لـ view-only)
+vncserver -localhost -SecurityTypes None :1
+export DISPLAY=:1
 
 # استنسخ المشروع
 cd ~
@@ -37,11 +42,12 @@ nano .env              # ضع WORKER_URL و INGEST_TOKEN
 ## ٣. جرّب يدوياً
 
 ```sh
+export DISPLAY=:1
 node check.mjs
 ```
 يجب أن يطبع: `[browser] فُحص 1 · نجح 1 · تغيّرات 0`.
-- `[browser]` = استخدم Chromium (جيّد). `[fetch]` = لم يجد Chromium.
-- لو ظهر `block_page (browser)` → بدّل الشبكة (واي‑فاي ↔ بيانات جوّال) وأعد المحاولة.
+- لو ظهر `block_page (browser)` → تأكّد أن `DISPLAY=:1` مضبوط وأن `vncserver :1` يعمل
+  (المتصفّح لازم يعمل بنافذة، لا headless).
 
 ## ٤. التشغيل التلقائي الدائم
 
