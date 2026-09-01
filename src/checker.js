@@ -3,6 +3,10 @@
 import { notify } from './notify.js';
 import { extractGoodsId } from './parse.js';
 
+// وحدات لكل دولار واحد (SAR/AED مربوطتان). للمقارنة بالسعر المستهدف المخزّن بالدولار.
+const FX_PER_USD = { USD:1, SAR:3.75, AED:3.6725, QAR:3.64, KWD:0.307, BHD:0.376, OMR:0.385, JOD:0.709, ILS:3.7, MAD:10, EGP:48, EUR:0.92, GBP:0.79, IQD:1310, TRY:34, CAD:1.37, AUD:1.5 };
+const toUsd = (v, cur) => { if (v == null) return null; const r = FX_PER_USD[String(cur || 'USD').toUpperCase()]; return r ? v / r : v; };
+
 function fmt(n, cur) {
   return n == null ? '—' : `${n}${cur ? ' ' + cur : ''}`;
 }
@@ -15,7 +19,7 @@ async function sendAlert(env, p, e, currency) {
     e.type === 'price_rise' ? `📈 ارتفع السعر +${e.pct}%` :
     e.type === 'back_in_stock' ? `✅ <b>رجع للمخزون</b>` :
     e.type === 'out_of_stock' ? `⛔️ نفد المخزون` :
-    e.type === 'target_hit' ? `🎯 <b>وصل سعرك المستهدف</b>` : e.type;
+    e.type === 'target_hit' ? `🎯 <b>وصل سعرك المستهدف</b> ($${p.target_price})` : e.type;
   const text = `${head}\n\n<b>${name}</b>\n${fmt(e.old, cur)} ← <b>${fmt(e.new, cur)}</b>\n\n${p.url}`;
   await notify(env, p.notify_channel, { title: `${head.replace(/<[^>]+>/g, '')} — ${name}`, text }).catch(() => {});
 }
@@ -61,8 +65,14 @@ export async function applyResult(env, r) {
   }
   if (oldStock === 0 && newStock === 1) events.push({ type: 'back_in_stock', old: oldPrice, new: newPrice, pct: null });
   if (oldStock === 1 && newStock === 0) events.push({ type: 'out_of_stock', old: oldPrice, new: newPrice, pct: null });
-  if (p.target_price != null && oldPrice != null && oldPrice > p.target_price && newPrice <= p.target_price) {
-    events.push({ type: 'target_hit', old: oldPrice, new: newPrice, pct: null });
+  if (p.target_price != null) {
+    // السعر المستهدف مخزّن بالدولار — نحوّل سعر المتجر للدولار للمقارنة.
+    const tgt = p.target_price;
+    const oldUsd = toUsd(oldPrice, currency);
+    const newUsd = toUsd(newPrice, currency);
+    if (newUsd != null && newUsd <= tgt && (oldUsd == null || oldUsd > tgt)) {
+      events.push({ type: 'target_hit', old: oldPrice, new: newPrice, pct: null });
+    }
   }
 
   for (const e of events) {
@@ -84,7 +94,7 @@ export async function applyResults(env, results) {
 // يُرسل تنبيهاً واحداً. staleMinutes يُقرأ من settings (افتراضي 60).
 export async function watchdog(env) {
   const row = await env.DB.prepare("SELECT value FROM settings WHERE key='watchdog_minutes'").first();
-  const mins = parseInt(row?.value) || 60;
+  const mins = parseInt(row?.value) || 150;
   const cutoff = new Date(Date.now() - mins * 60000).toISOString();
 
   const stale = await env.DB.prepare(

@@ -60,7 +60,7 @@ chmod +x ~/.termux/boot/start.sh
 sh ~/.termux/boot/start.sh &
 ```
 
-- الافتراضي: فحص **كل ٥ دقائق**. لأقصى تكرار: `nano ~/.termux/boot/start.sh` وغيّر `INTERVAL=300` إلى `INTERVAL=60`.
+- الافتراضي: فحص **كل ٦٠ دقيقة** (`INTERVAL=3600`). لتغييره: `nano ~/.termux/boot/start.sh`.
 - السجلّ: `tail -f ~/shein-price-tracker/fetcher/last-run.log`
 
 ## ٥. إعدادات أندرويد (مهم لئلا يوقفه النظام)

@@ -4,7 +4,7 @@
 # يُوضع في ~/.termux/boot/start.sh ليعمل تلقائياً بعد إقلاع الجهاز
 # (يتطلّب إضافة Termux:Boot من F-Droid).
 
-INTERVAL=${INTERVAL:-300}   # 300 = كل 5 دقائق. غيّره لـ 60 لأقصى تكرار.
+INTERVAL=${INTERVAL:-3600}   # 3600 = كل 60 دقيقة.
 REPO="$HOME/shein-price-tracker"
 LOG="$REPO/fetcher/last-run.log"
 

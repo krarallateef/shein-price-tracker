@@ -2,6 +2,7 @@
 export const DASHBOARD_HTML = /* html */ `<!doctype html>
 <html lang="ar" dir="rtl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3C/svg%3E">
 <title>متتبّع أسعار شي إن</title>
 <style>
   :root{
@@ -28,6 +29,8 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
   td.wrap-cell{white-space:normal;min-width:160px}
   th{color:var(--sub);font-weight:700}
   .usd{font-weight:800}.orig{color:var(--sub);font-size:11px}
+  .ind{display:inline-block;width:13px;height:13px;border-radius:4px;background:var(--accent);vertical-align:middle}
+  .ind.off{background:#cbd5e1}.ind.warn{background:var(--red)}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .tabbar{display:flex;gap:6px;margin-bottom:14px}
   .tabbar button{background:#fff;color:var(--sub);border:1px solid var(--line)}
@@ -79,7 +82,7 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
         <div class="row">
           <input id="p_url" placeholder="رابط منتج شي إن" style="flex:1;min-width:220px">
           <input id="p_label" placeholder="تسمية (اختياري)" style="width:150px">
-          <input id="p_target" type="number" step="0.01" placeholder="سعر مستهدف" style="width:120px">
+          <input id="p_target" type="number" step="0.01" placeholder="سعر مستهدف $" style="width:120px">
           <select id="p_channel"><option value="default">القناة الافتراضية</option><option value="telegram">تلغرام</option><option value="email">إيميل</option><option value="both">الاثنان</option></select>
           <button onclick="addProduct()">إضافة</button>
         </div>
@@ -87,7 +90,7 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
       <div class="card"><div class="tablewrap"><table><thead><tr>
         <th>صورة</th><th>المنتج</th><th>SKU</th><th>السعر الحالي</th><th>المستهدف</th><th>مخزون</th><th>آخر فحص</th><th>القناة</th><th></th>
       </tr></thead><tbody id="pRows"></tbody></table></div>
-      <p class="muted">الأسعار محوّلة إلى الدولار الأمريكي (تقريبي). القيمة الأصلية بعملة المتجر تحتها.</p></div>
+      <p class="muted">الأسعار والسعر المستهدف بالدولار الأمريكي (تحويل تقريبي). القيمة الأصلية بعملة المتجر تحت السعر الحالي.</p></div>
     </div>
 
     <div id="tab-events" class="hidden">
@@ -119,7 +122,7 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
           <label>القناة الافتراضية</label>
           <select id="s_default"><option value="telegram">تلغرام</option><option value="email">إيميل</option><option value="both">الاثنان</option></select>
           <label>تنبيه توقّف الجالب بعد (دقائق)</label>
-          <input id="s_watchdog" type="number" value="60" style="width:90px">
+          <input id="s_watchdog" type="number" value="150" style="width:90px">
           <button onclick="saveSettings()">حفظ الإعدادات</button>
         </div>
       </div>
@@ -155,9 +158,9 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
     <td class="wrap-cell"><a href="\${p.url}" target="_blank">\${p.label||('#'+p.id)}</a></td>
     <td>\${p.sku?\`<span class="sku">\${p.sku}</span>\`:(p.goods_id?\`<span class="sku">\${p.goods_id}</span>\`:'—')}</td>
     <td>\${priceCell(p.last_price,p.currency)}</td>
-    <td>\${p.target_price!=null?priceCell(p.target_price,p.currency):'—'}</td>
-    <td>\${p.last_in_stock==null?'—':(p.last_in_stock?'✅':'⛔️')}</td>
-    <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'—'}\${p.consecutive_failures?' ⚠️'+p.consecutive_failures:''}</td>
+    <td>\${p.target_price!=null?'<span class="usd">$'+p.target_price+'</span>':'—'}</td>
+    <td>\${p.last_in_stock==null?'<span class="muted">—</span>':'<span class="ind'+(p.last_in_stock?'':' off')+'" title="'+(p.last_in_stock?'متوفّر':'نفد')+'"></span>'}</td>
+    <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'—'}\${p.consecutive_failures?' <span class="ind warn" title="فشل الجلب '+p.consecutive_failures+' مرات متتالية"></span>':''}</td>
     <td>\${({telegram:'تلغرام',email:'إيميل',both:'الاثنان'})[p.notify_channel]||'افتراضي'}</td>
     <td class="row">
       <button class="ghost" onclick="editP(\${p.id})">تعديل</button>
@@ -179,7 +182,7 @@ function editP(id){
     <div class="muted" style="margin-top:2px">\${esc(p.label||('#'+p.id))}</div>
     <label>الاسم / التسمية</label><input id="e_label" value="\${esc(p.label)}">
     <label>الرابط</label><input id="e_url" value="\${esc(p.url)}">
-    <label>السعر المستهدف (بعملة المتجر\${p.currency?' — '+p.currency:''})</label><input id="e_target" type="number" step="0.01" value="\${esc(p.target_price)}">
+    <label>السعر المستهدف (بالدولار $)</label><input id="e_target" type="number" step="0.01" value="\${esc(p.target_price)}">
     <label>قناة التنبيه</label>
     <select id="e_channel">
       <option value="default">القناة الافتراضية</option><option value="telegram">تلغرام</option>
@@ -206,7 +209,7 @@ function editP(id){
 async function loadEvents(){const j=await api('/events');
   $('#eRows').innerHTML=j.events.map(e=>{
     const cls=e.event_type==='price_drop'||e.event_type==='target_hit'?'drop':e.event_type==='price_rise'?'rise':'stock';
-    const lbl=({price_drop:'📉 نزول '+e.pct_change+'%',price_rise:'📈 صعود +'+e.pct_change+'%',back_in_stock:'✅ رجع للمخزون',out_of_stock:'⛔️ نفد',target_hit:'🎯 سعر مستهدف'})[e.event_type]||e.event_type;
+    const lbl=({price_drop:'نزول '+e.pct_change+'%',price_rise:'صعود +'+e.pct_change+'%',back_in_stock:'رجع للمخزون',out_of_stock:'نفد المخزون',target_hit:'بلغ السعر المستهدف'})[e.event_type]||e.event_type;
     return \`<tr><td class="muted">\${new Date(e.detected_at).toLocaleString('ar')}</td><td>\${e.label||('#'+e.product_id)}</td>
       <td><span class="pill \${cls}">\${lbl}</span></td><td>\${priceCell(e.old_price,e.currency)} ← \${priceCell(e.new_price,e.currency)}</td></tr>\`}).join('')
     ||'<tr><td colspan=4 class="muted">لا تغيّرات مسجّلة بعد</td></tr>'}
@@ -214,7 +217,7 @@ async function loadEvents(){const j=await api('/events');
 async function loadSettings(){const j=await api('/settings');const s=j.settings;
   s_tg_token.value=s.telegram_token||'';s_tg_chat.value=s.telegram_chat_id||'';
   s_re_key.value=s.resend_api_key||'';s_re_from.value=s.resend_from||'';s_re_to.value=s.resend_to||'';
-  s_default.value=s.default_channel||'telegram';s_watchdog.value=s.watchdog_minutes||'60'}
+  s_default.value=s.default_channel||'telegram';s_watchdog.value=s.watchdog_minutes||'150'}
 async function saveSettings(){await api('/settings',{method:'PUT',body:JSON.stringify({
   telegram_token:s_tg_token.value.trim(),telegram_chat_id:s_tg_chat.value.trim(),
   resend_api_key:s_re_key.value.trim(),resend_from:s_re_from.value.trim(),resend_to:s_re_to.value.trim(),
