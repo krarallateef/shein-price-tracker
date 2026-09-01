@@ -10,18 +10,24 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
     --green:#16a34a;--green-bg:#f0fdf4;--red:#dc2626;--red-bg:#fef2f2;--amber:#d97706;--amber-bg:#fffbeb;
   }
   *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
   body{margin:0;font-family:system-ui,'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-  .wrap{max-width:980px;margin:0 auto;padding:20px}
+  .wrap{max-width:1240px;margin:0 auto;padding:20px}
+  @media(max-width:640px){.wrap{padding:12px}}
   h1{font-size:19px;margin:0 0 4px}.muted{color:var(--sub);font-size:12px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.04)}
-  input,select,button{font:inherit;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 11px}
+  @media(max-width:640px){.card{padding:12px}}
+  input,select,button{font:inherit;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 11px;max-width:100%}
   input:focus,select:focus{outline:2px solid var(--accent-bg);border-color:var(--accent)}
   button{background:var(--accent);color:#fff;font-weight:800;border:0;cursor:pointer}
   button.ghost{background:#fff;color:var(--sub);border:1px solid var(--line)}
   button.danger{background:#fff;color:var(--red);border:1px solid #fecaca}
-  table{width:100%;border-collapse:collapse;font-size:12.5px}
-  th,td{text-align:right;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}
+  th,td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  td.wrap-cell{white-space:normal;min-width:160px}
   th{color:var(--sub);font-weight:700}
+  .usd{font-weight:800}.orig{color:var(--sub);font-size:11px}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .tabbar{display:flex;gap:6px;margin-bottom:14px}
   .tabbar button{background:#fff;color:var(--sub);border:1px solid var(--line)}
@@ -74,15 +80,16 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
           <button onclick="addProduct()">إضافة</button>
         </div>
       </div>
-      <div class="card"><table><thead><tr>
+      <div class="card"><div class="tablewrap"><table><thead><tr>
         <th>صورة</th><th>المنتج</th><th>SKU</th><th>السعر الحالي</th><th>المستهدف</th><th>مخزون</th><th>آخر فحص</th><th>القناة</th><th></th>
       </tr></thead><tbody id="pRows"></tbody></table></div>
+      <p class="muted">الأسعار محوّلة إلى الدولار الأمريكي (تقريبي). القيمة الأصلية بعملة المتجر تحتها.</p></div>
     </div>
 
     <div id="tab-events" class="hidden">
-      <div class="card"><table><thead><tr>
+      <div class="card"><div class="tablewrap"><table><thead><tr>
         <th>التاريخ والوقت</th><th>المنتج</th><th>التغيّر</th><th>السعر</th>
-      </tr></thead><tbody id="eRows"></tbody></table></div>
+      </tr></thead><tbody id="eRows"></tbody></table></div></div>
     </div>
 
     <div id="tab-settings" class="hidden">
@@ -119,6 +126,11 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
 <script>
 const $=s=>document.querySelector(s);
 let msgT;
+// أسعار صرف تقريبية: وحدات لكل 1 دولار (SAR/AED مربوطتان بثبات).
+const FX={USD:1,SAR:3.75,AED:3.6725,QAR:3.64,KWD:0.307,BHD:0.376,OMR:0.385,JOD:0.709,ILS:3.7,MAD:10,EGP:48,EUR:0.92,GBP:0.79,IQD:1310,TRY:34,CAD:1.37,AUD:1.5};
+function usd(price,cur){if(price==null||isNaN(price))return null;const r=FX[(cur||'USD').toUpperCase()];if(!r)return null;return price/r}
+function priceCell(price,cur){const u=usd(price,cur);if(u==null)return (price??'—')+' '+(cur||'');
+  return '<span class="usd">$'+u.toFixed(2)+'</span>'+(cur&&cur!=='USD'?'<div class="orig">'+price+' '+cur+'</div>':'')}
 function flash(t){$('#msg').textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>$('#msg').textContent='',5000)}
 async function api(path,opts){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},...opts});if(r.status===401&&path!=='/login'){show('login');throw new Error('unauth')}return r.json()}
 function show(v){$('#loginView').classList.toggle('hidden',v!=='login');$('#appView').classList.toggle('hidden',v==='login');if(v==='app')loadAll()}
@@ -135,10 +147,10 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
   $('#stat').textContent=cnt+' منتج · آخر تحديث من الجالب: '+(latest?new Date(latest).toLocaleString('ar'):'لم يصل بعد');
   $('#pRows').innerHTML=j.products.map(p=>\`<tr>
     <td>\${p.image_url?\`<a href="\${p.url}" target="_blank"><img class="thumb" src="\${p.image_url}" loading="lazy" onerror="this.style.visibility='hidden'"></a>\`:'<div class="thumb"></div>'}</td>
-    <td><a href="\${p.url}" target="_blank">\${p.label||('#'+p.id)}</a></td>
+    <td class="wrap-cell"><a href="\${p.url}" target="_blank">\${p.label||('#'+p.id)}</a></td>
     <td>\${p.sku?\`<span class="sku">\${p.sku}</span>\`:(p.goods_id?\`<span class="sku">\${p.goods_id}</span>\`:'—')}</td>
-    <td><b>\${p.last_price??'—'}</b> \${p.currency||''}</td>
-    <td>\${p.target_price??'—'}</td>
+    <td>\${priceCell(p.last_price,p.currency)}</td>
+    <td>\${p.target_price!=null?priceCell(p.target_price,p.currency):'—'}</td>
     <td>\${p.last_in_stock==null?'—':(p.last_in_stock?'✅':'⛔️')}</td>
     <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'—'}\${p.consecutive_failures?' ⚠️'+p.consecutive_failures:''}</td>
     <td>\${({telegram:'تلغرام',email:'إيميل',both:'الاثنان'})[p.notify_channel]||'افتراضي'}</td>
@@ -157,7 +169,7 @@ async function loadEvents(){const j=await api('/events');
     const cls=e.event_type==='price_drop'||e.event_type==='target_hit'?'drop':e.event_type==='price_rise'?'rise':'stock';
     const lbl=({price_drop:'📉 نزول '+e.pct_change+'%',price_rise:'📈 صعود +'+e.pct_change+'%',back_in_stock:'✅ رجع للمخزون',out_of_stock:'⛔️ نفد',target_hit:'🎯 سعر مستهدف'})[e.event_type]||e.event_type;
     return \`<tr><td class="muted">\${new Date(e.detected_at).toLocaleString('ar')}</td><td>\${e.label||('#'+e.product_id)}</td>
-      <td><span class="pill \${cls}">\${lbl}</span></td><td>\${e.old_price??'—'} ← <b>\${e.new_price??'—'}</b></td></tr>\`}).join('')
+      <td><span class="pill \${cls}">\${lbl}</span></td><td>\${priceCell(e.old_price,e.currency)} ← \${priceCell(e.new_price,e.currency)}</td></tr>\`}).join('')
     ||'<tr><td colspan=4 class="muted">لا تغيّرات مسجّلة بعد</td></tr>'}
 
 async function loadSettings(){const j=await api('/settings');const s=j.settings;

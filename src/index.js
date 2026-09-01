@@ -74,7 +74,7 @@ app.delete('/api/products/:id', async (c) => {
 // ── سجلّ التغيّرات ──
 app.get('/api/events', async (c) => {
   const { results } = await c.env.DB.prepare(
-    'SELECT e.*, p.label FROM price_events e LEFT JOIN products p ON p.id=e.product_id ORDER BY e.detected_at DESC LIMIT 200'
+    'SELECT e.*, p.label, p.currency FROM price_events e LEFT JOIN products p ON p.id=e.product_id ORDER BY e.detected_at DESC LIMIT 200'
   ).all();
   return c.json({ events: results || [] });
 });

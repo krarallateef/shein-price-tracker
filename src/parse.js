@@ -50,7 +50,7 @@ export function parsePrice(html) {
           const img = Array.isArray(n.image) ? n.image[0] : n.image;
           return withExtras({
             price, currency: offer.priceCurrency || null,
-            inStock: avail ? avail.includes('instock') : null,
+            inStock: avail ? !/(soldout|outofstock|discontinued)/.test(avail) : null,
             image: img || null, sku: n.sku || n.mpn || null,
           });
         }
