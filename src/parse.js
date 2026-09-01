@@ -27,7 +27,7 @@ function extractName(html) {
   if (!n) { const t = html.match(/<title[^>]*>([^<]+)<\/title>/i); if (t) n = t[1]; }
   if (!n) return null;
   n = n.replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
-       .replace(/\s*[|\-–]\s*SHEIN.*$/i, '').replace(/\s+/g, ' ').trim();
+       .replace(/\s*[|\-–]\s*(SHEIN|شي\s*إن|شي\s*ان).*$/i, '').replace(/\s+/g, ' ').trim();
   return n.slice(0, 140) || null;
 }
 
