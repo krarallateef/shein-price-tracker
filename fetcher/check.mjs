@@ -114,9 +114,9 @@ async function fetchViaBrowser(products, chromePath) {
         await humanize();
         await sleep(3000 + Math.random() * 2000);
         let html = await page.content();
-        // شي إن/Akamai يضبطان كوكي القبول بعد أول زيارة — أعد التحميل حتى ٣ مرات.
-        for (let attempt = 0; attempt < 3 && isBlockPage(html); attempt++) {
-          await sleep(4000 + attempt * 3000);
+        // شي إن/Akamai يضبطان كوكي القبول بعد أول زيارة — أعد التحميل حتى ٥ مرات.
+        for (let attempt = 0; attempt < 5 && isBlockPage(html); attempt++) {
+          await sleep(5000 + attempt * 4000);
           await page.reload({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
           await humanize();
           await sleep(3000 + Math.random() * 2000);
@@ -134,7 +134,7 @@ async function fetchViaBrowser(products, chromePath) {
       } finally {
         if (page) await page.close().catch(() => {});
       }
-      await sleep(800 + Math.random() * 1200);
+      await sleep(6000 + Math.random() * 6000); // فاصل أطول بين المنتجات — يخفّف حظر Akamai
     }
   } finally {
     await browser.close().catch(() => {});

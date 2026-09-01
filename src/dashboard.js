@@ -39,6 +39,10 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
   a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
   .hidden{display:none}
   #msg{font-size:12px;color:var(--accent);min-height:16px}
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .modal{background:var(--card);border-radius:14px;padding:18px;width:100%;max-width:420px;box-shadow:0 10px 40px rgba(15,23,42,.2)}
+  .modal label{display:block;font-size:12px;color:var(--sub);margin:10px 0 4px}
+  .modal input,.modal select{width:100%}
 </style></head><body>
 <div class="wrap">
 
@@ -145,6 +149,7 @@ async function loadAll(){loadProducts();loadEvents();loadSettings()}
 async function loadProducts(){const j=await api('/products');const cnt=j.products.length;
   const latest=j.products.map(p=>p.last_checked_at).filter(Boolean).sort().pop();
   $('#stat').textContent=cnt+' منتج · آخر تحديث من الجالب: '+(latest?new Date(latest).toLocaleString('ar'):'لم يصل بعد');
+  window._products=j.products;
   $('#pRows').innerHTML=j.products.map(p=>\`<tr>
     <td>\${p.image_url?\`<a href="\${p.url}" target="_blank"><img class="thumb" src="\${p.image_url}" loading="lazy" onerror="this.style.visibility='hidden'"></a>\`:'<div class="thumb"></div>'}</td>
     <td class="wrap-cell"><a href="\${p.url}" target="_blank">\${p.label||('#'+p.id)}</a></td>
@@ -155,6 +160,7 @@ async function loadProducts(){const j=await api('/products');const cnt=j.product
     <td class="muted">\${p.last_checked_at?new Date(p.last_checked_at).toLocaleString('ar'):'—'}\${p.consecutive_failures?' ⚠️'+p.consecutive_failures:''}</td>
     <td>\${({telegram:'تلغرام',email:'إيميل',both:'الاثنان'})[p.notify_channel]||'افتراضي'}</td>
     <td class="row">
+      <button class="ghost" onclick="editP(\${p.id})">تعديل</button>
       <button class="ghost" onclick="toggleP(\${p.id},\${p.active?0:1})">\${p.active?'إيقاف':'تفعيل'}</button>
       <button class="danger" onclick="delP(\${p.id})">حذف</button>
     </td></tr>\`).join('')||'<tr><td colspan=9 class="muted">لا منتجات بعد</td></tr>'}
@@ -163,6 +169,39 @@ async function addProduct(){const url=$('#p_url').value.trim();if(!url)return;
   $('#p_url').value=$('#p_label').value=$('#p_target').value='';flash('أُضيف — سيُفحص خلال دقائق');loadProducts()}
 async function toggleP(id,active){await api('/products/'+id,{method:'PATCH',body:JSON.stringify({active})});loadProducts()}
 async function delP(id){if(!confirm('حذف المنتج وسجلّه؟'))return;await api('/products/'+id,{method:'DELETE'});loadProducts();loadEvents()}
+
+function editP(id){
+  const p=(window._products||[]).find(x=>x.id===id);if(!p)return;
+  const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const wrap=document.createElement('div');wrap.className='modal-bg';wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};
+  wrap.innerHTML=\`<div class="modal">
+    <h1 style="font-size:16px;margin:0">تعديل المنتج</h1>
+    <div class="muted" style="margin-top:2px">\${esc(p.label||('#'+p.id))}</div>
+    <label>الاسم / التسمية</label><input id="e_label" value="\${esc(p.label)}">
+    <label>الرابط</label><input id="e_url" value="\${esc(p.url)}">
+    <label>السعر المستهدف (بعملة المتجر\${p.currency?' — '+p.currency:''})</label><input id="e_target" type="number" step="0.01" value="\${esc(p.target_price)}">
+    <label>قناة التنبيه</label>
+    <select id="e_channel">
+      <option value="default">القناة الافتراضية</option><option value="telegram">تلغرام</option>
+      <option value="email">إيميل</option><option value="both">الاثنان</option>
+    </select>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="ghost" id="e_cancel">إلغاء</button>
+      <button id="e_save">حفظ</button>
+    </div>
+  </div>\`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#e_channel').value=p.notify_channel||'default';
+  wrap.querySelector('#e_cancel').onclick=()=>wrap.remove();
+  wrap.querySelector('#e_save').onclick=async()=>{
+    const body={label:wrap.querySelector('#e_label').value.trim()||null,
+      url:wrap.querySelector('#e_url').value.trim(),
+      target_price:parseFloat(wrap.querySelector('#e_target').value)||null,
+      notify_channel:wrap.querySelector('#e_channel').value};
+    const j=await api('/products/'+id,{method:'PATCH',body:JSON.stringify(body)});
+    if(j&&j.error){flash('خطأ: '+j.error);return}
+    wrap.remove();flash('حُفظت التعديلات');loadProducts()};
+}
 
 async function loadEvents(){const j=await api('/events');
   $('#eRows').innerHTML=j.events.map(e=>{

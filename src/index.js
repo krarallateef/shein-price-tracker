@@ -62,6 +62,12 @@ app.patch('/api/products/:id', async (c) => {
   const b = await c.req.json();
   const fields = [], vals = [];
   for (const k of ['label', 'target_price', 'notify_channel', 'active']) if (k in b) { fields.push(`${k}=?`); vals.push(b[k]); }
+  if ('url' in b) {
+    if (!/^https?:\/\//.test(b.url || '')) return c.json({ error: 'رابط غير صالح' }, 400);
+    const region = (b.url.match(/https?:\/\/([a-z0-9-]+)\.shein\.com/i) || [])[1] || 'www';
+    fields.push('url=?', 'region=?', 'goods_id=?');
+    vals.push(b.url.trim(), region, extractGoodsId(b.url));
+  }
   if (fields.length) { vals.push(c.req.param('id')); await c.env.DB.prepare(`UPDATE products SET ${fields.join(',')} WHERE id=?`).bind(...vals).run(); }
   return c.json({ ok: true });
 });
