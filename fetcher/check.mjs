@@ -80,9 +80,12 @@ async function fetchViaBrowser(products, chromePath) {
       let page;
       try {
         page = await browser.newPage();
-        await page.setUserAgent(UA);
         await page.setExtraHTTPHeaders({ 'Accept-Language': lang });
-        await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+        if (!process.env.NATIVE_UA) {
+          // UA يجب أن يطابق Client Hints — نستخدم سلسلة ديسكتوب Chrome تطابق نسخة Chromium على الجهاز.
+          await page.setUserAgent(UA);
+          await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+        }
         // تمويه علامات الأتمتة قبل تحميل أي سكربت للصفحة.
         await page.evaluateOnNewDocument(() => {
           Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
