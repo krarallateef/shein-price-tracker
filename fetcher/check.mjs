@@ -127,7 +127,7 @@ async function fetchViaBrowser(products, chromePath) {
         else {
           const parsed = parsePrice(html);
           if (!parsed) results.push({ id: p.id, error: 'price_not_found — قد يحتاج parse.js تحديثاً' });
-          else results.push({ id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku });
+          else results.push({ id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku, name: parsed.name });
         }
       } catch (e) {
         results.push({ id: p.id, error: String(e.message || e).slice(0, 200) });
@@ -189,7 +189,7 @@ async function fetchOneHttp(p) {
     if (!res.ok && html.length < 3000) return { id: p.id, error: `http_${res.status}` };
     const parsed = parsePrice(html);
     if (!parsed) return { id: p.id, error: 'price_not_found — قد يحتاج parse.js تحديثاً' };
-    return { id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku };
+    return { id: p.id, price: parsed.price, currency: parsed.currency, in_stock: parsed.inStock, image: parsed.image, sku: parsed.sku, name: parsed.name };
   } catch (e) {
     return { id: p.id, error: String(e.message || e).slice(0, 200) };
   }

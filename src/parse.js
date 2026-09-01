@@ -19,6 +19,18 @@ function extractImage(html) {
   return null;
 }
 
+// اسم المنتج — og:title ثم JSON-LD name ثم <title> (منظّفاً من لاحقة شي إن).
+function extractName(html) {
+  const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+  let n = og ? og[1] : null;
+  if (!n) { const ld = html.match(/"name"\s*:\s*"([^"]{4,160})"/); if (ld) n = ld[1]; }
+  if (!n) { const t = html.match(/<title[^>]*>([^<]+)<\/title>/i); if (t) n = t[1]; }
+  if (!n) return null;
+  n = n.replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
+       .replace(/\s*[|\-–]\s*SHEIN.*$/i, '').replace(/\s+/g, ' ').trim();
+  return n.slice(0, 140) || null;
+}
+
 // SKU — رمز المنتج (goods_sn في شي إن) ثم JSON-LD sku/mpn.
 function extractSku(html) {
   const sn = html.match(/"goods_sn"\s*:\s*"([A-Za-z0-9_-]+)"/);
@@ -33,7 +45,8 @@ export function parsePrice(html) {
   if (!html || html.length < 500) return null;
   const image = extractImage(html);
   const sku = extractSku(html);
-  const withExtras = (o) => ({ ...o, image: o.image ?? image, sku: o.sku ?? sku });
+  const name = extractName(html);
+  const withExtras = (o) => ({ ...o, image: o.image ?? image, sku: o.sku ?? sku, name: o.name ?? name });
 
   // أ) JSON-LD
   for (const b of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
